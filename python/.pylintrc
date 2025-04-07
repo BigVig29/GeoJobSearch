@@ -1,0 +1,12 @@
+[FORMAT]
+max-line-length=240
+
+[DESIGN]
+
+# Maximum number of locals for function / method body
+max-locals=30
+
+# Maximum number of arguments for function / method
+max-args=15
+
+extension-pkg-whitelist=lxml

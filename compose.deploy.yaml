@@ -1,0 +1,92 @@
+#Docker Compose is a tool for defining and running multi-container Docker applications. 
+#With Docker Compose, you use a YAML file to configure your application's services, networks, volumes, and other resources.
+
+version: '3.8'  # Specifies the Docker Compose file version which determines the features available
+
+#This section defines the containers that make up your application. Each service represents a container with its configuration
+services:  # Defines the services that make up the application
+
+  swag: #reverse proxy
+    image: lscr.io/linuxserver/swag:latest
+    container_name: swag
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - URL=algorise.socs.uoguelph.ca
+      - VALIDATION=http
+      - STAGING=true #optional
+    volumes:
+      - ./swag/config:/config
+    ports:
+      - 443:443
+      - 80:80 #optional
+    depends_on:
+      - react
+    networks:
+      - swag-react
+    restart: unless-stopped
+
+
+  spring:
+    build: ./spring
+    container_name: algorise-spring
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_ADDRESS=jdbc:mysql://algorise-mysql:3306
+      - DB_DATABASE=GeoJobSearch
+      - DB_USER=root
+      - DB_PASSWORD=0000
+    networks:
+      - algorise-spring-mysql
+      - algorise-spring-react
+    depends_on:
+      - algorise-mysql
+      - python  
+
+  algorise-mysql:
+    build: ./mysql
+    container_name: algorise-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=0000 # The root password for MySQL
+      - MYSQL_DATABASE=GeoJobSearch # The database to create when the container starts
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks: # Network the MySQL service is connected to
+      - algorise-spring-mysql # Network for communicating with the Spring service
+    
+  python:
+    build: ./python
+    container_name: algorise-python
+    networks:
+      - algorise-spring-mysql # Connects to the same network as MySQL for communication
+    depends_on:
+      - algorise-mysql # Ensures MySQL service is started before the Python service
+
+  react:  # The React frontend service
+    build: ./react  # Builds the Docker image from the Dockerfile in the './react' directory
+    container_name: algorise-react
+    ports:
+      - "3000:3000"  # Exposes port 3000 on the host and maps it to port 3000 in the container
+    environment:  # Environment variable for the React service
+      - BACKEND_PROXY=http://spring:8080  # The URL to the backend Spring service
+    networks:  # Network the React service is connected to
+      - algorise-spring-react  # Network for communicating with the Spring service
+      - swag-react
+    depends_on:
+      - algorise-mysql
+      - python  
+      - spring
+    
+
+networks:  # Defines the networks used by the services
+  algorise-spring-mysql:  # Network used by the Spring and MySQL services
+  algorise-spring-react: # Network used by the Spring and React services
+  swag-react: #Network used by the Swag and React services
+
+volumes:
+  mariadb_data:

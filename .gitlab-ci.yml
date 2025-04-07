@@ -1,0 +1,118 @@
+# Define the stages of the CI pipeline for each service (React, Spring & Python)
+# Add stages for unit testing and static analysis for each service
+
+stages:
+  - java_build
+  - java_test_cases
+  - java_static_analysis
+  - python_test_cases
+  - python_static_analysis
+  - react_static_analysis
+
+
+# Set environment variables or configuration options
+variables:
+  # Disable Gradle Daemon to avoid potential issues with CI environment
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+
+
+# FRAMEWORK: RUN BUILD >>> RUN TESTS >>>> RUN STATIC ANALYSIS
+
+
+# ================================================================#
+# JAVA
+
+# Define the [BUILD] stage
+java_build:
+  stage: java_build
+  image: eclipse-temurin
+  # Script to execute for the build stage
+  script:
+    - cd spring/geojobsearch
+    # Grant execute permissions to Gradle wrapper script
+    - chmod +x ./gradlew
+    # Execute Gradle build excluding tests
+    - ./gradlew build -x test
+  # Define artifacts to be preserved from this stage
+  artifacts:
+    paths:
+      # Specify the path to the generated JAR file
+      - build/libs/*.jar
+
+# Define the [TEST] stage
+java_test_cases:
+  stage: java_test_cases
+  image: eclipse-temurin
+  # Script to execute for the test stage
+  script:
+    - cd spring/geojobsearch
+    # Grant execute permissions to Gradle wrapper script
+    - chmod +x ./gradlew
+    # Run unit tests
+    - ./gradlew check
+    # Calculate code coverage
+    - awk -F"," '{ instructions += $4 + $5; covered += $5 } END { print covered, "/", instructions, " instructions covered"; print "Total coverage:\s", 100*covered/instructions,  "%"}' build/reports/jacoco/test/jacocoTestReport.csv
+
+  artifacts:
+    paths:
+      - spring/build/reports/jacoco/test/jacocoTestReport.csv
+
+
+# Define the [STATIC ANALYSIS] stage
+java_static_analysis:
+  stage: java_static_analysis
+  image: eclipse-temurin
+  # Script to execute for the static analysis stage
+  script:
+    - cd spring/geojobsearch
+    # Grant execute permissions to Gradle wrapper script
+    - chmod +x ./gradlew
+    # Run PMD analysis
+    - ./gradlew pmdMain
+
+
+# ================================================================#
+# PYTHON
+
+# Define the [TEST] stage
+python_test_cases:
+  stage: python_test_cases
+  image: python:3.9
+  # Script to execute for the test stage
+  script:
+    - cd python
+    # Install Poetry
+    - pip install poetry==1.7.1
+    # Install poetry files
+    - poetry install
+    # Use poetry to run cases
+    - poetry run pytest --cov
+
+
+# Define the [STATIC ANALYSIS] stage
+python_static_analysis:
+  stage: python_static_analysis
+  image: python:3.9
+  # Script to execute for the Python analysis stage
+  script:
+    - cd python
+    # Install Poetry
+    - pip install poetry==1.7.1
+    # Install poetry files
+    - poetry install
+    # Use poetry to run cases
+    - poetry run pylint *.py
+
+
+# ================================================================#
+# REACT
+react_static_analysis:
+  stage: react_static_analysis
+  image: node:latest
+  script:
+    - cd react/src/components
+    - npm install eslint eslint-plugin-react eslint-plugin-react-hooks
+    - npx eslint --ext .js .
+
+
+

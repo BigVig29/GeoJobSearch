@@ -1,0 +1,30 @@
+{
+    "search_settings":[
+        {
+            "keyword":"Software+Data",
+            "location":"Canada",
+            "radius":15,
+            "fromage":14,
+            "sort":"date",
+            "start":0,
+            "step":10,
+            "max_pages":30
+        }
+    ],
+    "target_websites":[
+        {
+
+            "name":"Indeed",
+            "base_url":"https://ca.indeed.com/",
+            "template_url":"https://ca.indeed.com/jobs?q={}&l={}&radius={}&fromage={}&sort={}&start={}",
+            "search_params":{
+                "q": "{keyword}",
+                "l":"{location}",
+                "radius":"{radius}",
+                "fromage": "{fromage}",
+                "sort":"{date}",
+                "start":"{start}"
+            }
+        }
+    ]
+}
